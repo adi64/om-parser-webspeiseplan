@@ -41,7 +41,7 @@ def canteen_not_found(config, canteen_name):
 
 
 def _menu_params(canteen):
-    return MenuParams(canteen_id=canteen.id, chash=canteen.chash)
+    return MenuParams(subdomain=canteen.subdomain, location=canteen.location, token=canteen.token)
 
 
 @ct.cached(cache=cache, key=_menu_params)

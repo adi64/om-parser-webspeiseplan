@@ -8,7 +8,7 @@ from collections import namedtuple
 from functools import partial
 
 Canteen = namedtuple('Canteen',
-                     ('key', 'name', 'street', 'city', 'id', 'chash'))
+                     ('key', 'name', 'street', 'city', 'subdomain', 'location', 'token'))
 
 
 def _get_config(filename):
@@ -25,8 +25,9 @@ def _parse_canteen(config, canteen_name):
                    name=get('name'),
                    street=get('street'),
                    city=get('city'),
-                   id=get('id'),
-                   chash=get('cHash'))
+                   subdomain=get('subdomain'),
+                   location=get('location'),
+                   token=get('token'))
 
 
 def read_canteen_config():

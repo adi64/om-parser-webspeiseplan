@@ -1,27 +1,38 @@
 # -*- encoding: utf-8 -*-
 
+import logging
 from pyopenmensa.feed import LazyBuilder
 
+LOG = logging.getLogger(__name__)
+logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
 
 PRICE_ROLE_MAPPING = {
-    'student': 'preis_s',
-    'other': 'preis_g',
-    'employee': 'preis_m'
+    'student': 'mitarbeiterpreisDecimal2',
+    'other': 'gaestepreisDecimal2',
+    'employee': 'price3Decimal2'
 }
-
-
-def _active_days(menu):
-    for container in menu['wochentage']:
-        day = container['datum']
-        active = 'angebote' in day
-        if active:
-            yield day
-
 
 def _notes(offer):
     result = []
-    for label in offer['labels']:
-        result.append(label['name'].capitalize())
+    nutritional_values_strings = []
+    nutritional_values_format_string_mapping = {
+        'nwkcalInteger': '{} kcal energy',
+        'nwkjInteger': '{} kJ energy',
+        'nweiweissDecimal1': '{} g protein',
+        'nwfettDecimal1': '{} g fat',
+        'nwfettsaeurenDecimal1': 'thereof {} g saturated fats',
+        'nwkohlehydrateDecimal1': '{} g carbohydrates',
+        'nwzuckerDecimal1': 'thereof {} g sugar',
+        'nwsalzDecimal1': '{} g salt',
+    }
+
+    for key in nutritional_values_format_string_mapping.keys():
+        if key in offer:
+            nutritional_values_strings.append(nutritional_values_format_string_mapping[key].format(offer[key]))
+
+    nutritional_values = ', '.join(nutritional_values_strings)
+    
+    result.append(nutritional_values)
     return result
 
 
@@ -33,45 +44,10 @@ def _prices(offer):
 
         price = offer[api_role]
         # When no price is set, this can be empty dict
-        if isinstance(price, str) and price.strip():
+        if isinstance(price, float) or (isinstance(price, str) and price.strip()):
             result[role] = price
 
     return result
-
-
-def _process_day(builder, day):
-    for offer in _offers(day):
-        builder.addMeal(date=day['data'],
-                        category=_category(offer),
-                        name=offer['beschreibung'],
-                        notes=_notes(offer),
-                        prices=_prices(offer),
-                        roles=None)
-
-
-def _category(offer):
-    # 'Angebot' is just a placeholder. We cannot tell if 'Angebot' or 'Info' is
-    # more appropriate because offers lacking the 'titel' attribute are real
-    # meals or informational texts.
-    return offer['titel'] or 'Angebot'
-
-
-def _offers(day):
-    offers = day['angebote']
-    if isinstance(offers, list):
-        return offers
-
-    if isinstance(offers, dict):
-        # allows for the following structure:
-        # {'-1': <garbage>, '0': first_offer, ...}
-        # This case is degenerate and occurs only on semi-regular basis
-        # as of 2020-10-20. The assumption that offers at logical index -1
-        # are garbage can be challenged, it is simply a result of observing
-        # the API responses over several months.
-        return [offer for index, offer in offers.items() if int(index) >= 0]
-
-    raise AssertionError(f'cannot handle offers of type {type(offers)}')
-
 
 def render_menu(menu):
     """Render the menu for a canteen into an OpenMensa XML feed.
@@ -81,9 +57,19 @@ def render_menu(menu):
     """
     builder = LazyBuilder()
 
-    if menu:
-        for day in _active_days(menu):
-            _process_day(builder, day)
+    for block in menu:
+        meta = block['speiseplanAdvanced']
+        meals = block['speiseplanGerichtData']
+        for meal in meals:
+            day = meal['speiseplanAdvancedGericht']['datum']
+            name = meal['speiseplanAdvancedGericht']['gerichtname']
+            category = meta['anzeigename']
+            builder.addMeal(date=day,
+                category=category,
+                name=name,
+                notes=_notes(meal['zusatzinformationen']),
+                prices=_prices(meal['zusatzinformationen']),
+                roles=None)
 
     return builder.toXMLFeed()
 

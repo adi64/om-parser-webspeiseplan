@@ -5,12 +5,10 @@ import logging
 from collections import namedtuple
 import requests
 
-MenuParams = namedtuple('MenuParams', ('canteen_id', 'chash'))
-
-URL = 'https://www.studentenwerk-potsdam.de' + \
-      '/essen/unsere-mensen/detailinfos/'
+MenuParams = namedtuple('MenuParams', ('subdomain', 'location', 'token'))
 
 LOG = logging.getLogger(__name__)
+logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
 
 
 def _param_json(to_serialize):
@@ -28,19 +26,28 @@ def download_menu(menu_params):
     :param MenuParams menu_params: the target canteen
     """
     params = {
-        'tx_ddfmensa_ddfmensajson[interneid]': menu_params.canteen_id,
-        'type': 14529821235,
-        'cHash': menu_params.chash
+        'location': menu_params.location,
+        'token': menu_params.token,
+        'model': 'menu',
     }
 
-    body = {
-        'data': False
+    headers = {
+        'Referer': 'https://' + menu_params.subdomain + '.webspeiseplan.de/Menu',
+        'user-agent': 'Webspeiseplan-OpenMensa-Parser/0.0.1',
     }
 
-    request = requests.post(URL, params=params, json=body, timeout=30)
+    url = 'https://' + menu_params.subdomain + '.webspeiseplan.de/index.php'
+
+    response = requests.get(url, params=params, headers=headers, timeout=30)
 
     # urllib3 does not log response bodies - requests no longer supports it:
     # https://2.python-requests.org//en/master/api/#api-changes
-    LOG.debug('Response:\n>>>>>\n%s\n<<<<<', request.text)
+    LOG.debug('Response:\n>>>>>\n%s\n<<<<<', response.text)
 
-    return request.json()
+    response_json = response.json()
+
+    if not response_json['success']:
+        LOG.debug('Failed to get menu')
+        return False
+
+    return response.json()['content']
