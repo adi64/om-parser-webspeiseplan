@@ -51,3 +51,66 @@ def download_menu(menu_params):
         return False
 
     return response.json()['content']
+
+def download_meal_category(menu_params):
+    """Download the meal categories for a specific canteen.
+
+    :param MenuParams menu_params: the target canteen
+    """
+    params = {
+        'location': menu_params.location,
+        'token': menu_params.token,
+        'model': 'mealCategory',
+    }
+
+    headers = {
+        'Referer': 'https://' + menu_params.subdomain + '.webspeiseplan.de/Menu',
+        'user-agent': 'Webspeiseplan-OpenMensa-Parser/0.0.1',
+    }
+
+    url = 'https://' + menu_params.subdomain + '.webspeiseplan.de/index.php'
+
+    response = requests.get(url, params=params, headers=headers, timeout=30)
+
+    # urllib3 does not log response bodies - requests no longer supports it:
+    # https://2.python-requests.org//en/master/api/#api-changes
+    LOG.debug('Response:\n>>>>>\n%s\n<<<<<', response.text)
+
+    response_json = response.json()
+
+    if not response_json['success']:
+        LOG.debug('Failed to get meal categories')
+        return False
+
+    return response.json()['content']
+
+def download_outlet(menu_params):
+    """Download the outlet information.
+
+    :param MenuParams menu_params:
+    """
+    params = {
+        'token': menu_params.token,
+        'model': 'outlet',
+    }
+
+    headers = {
+        'Referer': 'https://' + menu_params.subdomain + '.webspeiseplan.de/InitialConfig',
+        'user-agent': 'Webspeiseplan-OpenMensa-Parser/0.0.1',
+    }
+
+    url = 'https://' + menu_params.subdomain + '.webspeiseplan.de/index.php'
+
+    response = requests.get(url, params=params, headers=headers, timeout=30)
+
+    # urllib3 does not log response bodies - requests no longer supports it:
+    # https://2.python-requests.org//en/master/api/#api-changes
+    LOG.debug('Response:\n>>>>>\n%s\n<<<<<', response.text)
+
+    response_json = response.json()
+
+    if not response_json['success']:
+        LOG.debug('Failed to get outlet')
+        return False
+
+    return response.json()['content']

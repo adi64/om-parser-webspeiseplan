@@ -49,7 +49,7 @@ def _prices(offer):
 
     return result
 
-def render_menu(menu):
+def render_menu(menu, categories):
     """Render the menu for a canteen into an OpenMensa XML feed.
 
     :param dict menu: the Python representation of the API JSON response
@@ -57,12 +57,22 @@ def render_menu(menu):
     """
     builder = LazyBuilder()
 
+    LOG.debug('render_menu', categories)
+
+    mealCategoryNames = {}
+    for mealCategory in categories:
+        id = mealCategory['id']
+        name = mealCategory['name']
+        mealCategoryNames[id] = name
+
     for block in menu:
         meta = block['speiseplanAdvanced']
         meals = block['speiseplanGerichtData']
         for meal in meals:
             day = meal['speiseplanAdvancedGericht']['datum']
-            name = meal['speiseplanAdvancedGericht']['gerichtname']
+            mealCategoryId = meal['speiseplanAdvancedGericht']['gerichtkategorieID']
+            mealCategoryName = mealCategoryNames[mealCategoryId]
+            name = '{}: {}'.format(mealCategoryName, meal['speiseplanAdvancedGericht']['gerichtname'])
             category = meta['anzeigename']
             builder.addMeal(date=day,
                 category=category,
